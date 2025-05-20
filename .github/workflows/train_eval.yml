@@ -1,59 +1,99 @@
-name: Train and Evaluate
+name: Train‑and‑Evaluate Diabetes Model
 
 on:
   workflow_dispatch:
     inputs:
-      epochs:
-        description: 'Numb of epoch'
+      test_size:
+        description: 'Data % to test'
         required: true
-        default: '10'
-      learning_rate:
-        description: 'Learning rate'
+        default: '0.2'
+      random_state:
+        description: 'Random seed'
         required: true
-        default: '0.001'
+        default: '42'
+      c:
+        description: 'C parameter in LogisticRegression'
+        required: true
+        default: '1.0'
 
 jobs:
-  download:
-    name: Download
+  checkout_and_download:
     runs-on: ubuntu-latest
-    outputs:
-      data_dir: ${{ steps.set_output.outputs.data_dir }}
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      - name: Create data dir and download
+      - name: Download dataset
         run: |
           mkdir -p data
-          wget https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv -O data/train.csv
+          wget -q https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv \
+               -O data/diabetes.csv
 
-      - id: set_output
-        run: echo "data_dir=data" >> $GITHUB_OUTPUT
+      - name: Upload dataset as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: diabetes-data
+          path: data/diabetes.csv
 
   train:
-    name: Train Model
     runs-on: ubuntu-latest
-    needs: download
+    needs: checkout_and_download
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-      - name: Train
+      - uses: actions/download-artifact@v3
+        with:
+          name: diabetes-data
+          path: data
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Train model
         run: |
-          echo "Training..."
-          echo "Epochs: ${{ github.event.inputs.epochs }}"
-          echo "Learning rate: ${{ github.event.inputs.learning_rate }}"
-          python train.py --data_dir=${{ needs.download.outputs.data_dir }} --epochs=${{ github.event.inputs.epochs }} --lr=${{ github.event.inputs.learning_rate }}
+          python train.py \
+            --data_dir=data \
+            --test_size=${{ github.event.inputs.test_size }} \
+            --random_state=${{ github.event.inputs.random_state }} \
+            --c=${{ github.event.inputs.c }}
+
+      - name: Upload trained model
+        uses: actions/upload-artifact@v3
+        with:
+          name: trained-model
+          path: model.pkl
 
   evaluate:
-    name: Evaluate Model
     runs-on: ubuntu-latest
     needs: train
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-      - name: Evaluate
+      - uses: actions/download-artifact@v3
+        with:
+          name: diabetes-data
+          path: data
+      - uses: actions/download-artifact@v3
+        with:
+          name: trained-model
+          path: .
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Evaluate model
         run: |
-          echo "Evalutaion running..."
-          python evaluate.py --data_dir=data
+          python evaluate.py \
+            --data_dir=data \
+            --random_state=${{ github.event.inputs.random_state }}
+
+      - name: Upload evaluation report
+        uses: actions/upload-artifact@v3
+        with:
+          name: evaluation-report
+          path: evaluation.txt
