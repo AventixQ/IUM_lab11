@@ -1,4 +1,4 @@
-name: Train‑and‑Evaluate Diabetes Model
+name: Train‑and‑Evaluate
 
 on:
   workflow_dispatch:
@@ -20,7 +20,7 @@ jobs:
   checkout_and_download:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Download dataset
         run: |
@@ -29,7 +29,7 @@ jobs:
                -O data/diabetes.csv
 
       - name: Upload dataset as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: diabetes-data
           path: data/diabetes.csv
@@ -38,12 +38,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: checkout_and_download
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: diabetes-data
           path: data
@@ -60,7 +60,7 @@ jobs:
             --c=${{ github.event.inputs.c }}
 
       - name: Upload trained model
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: trained-model
           path: model.pkl
@@ -69,16 +69,16 @@ jobs:
     runs-on: ubuntu-latest
     needs: train
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: diabetes-data
           path: data
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: trained-model
           path: .
@@ -93,7 +93,7 @@ jobs:
             --random_state=${{ github.event.inputs.random_state }}
 
       - name: Upload evaluation report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: evaluation-report
           path: evaluation.txt
