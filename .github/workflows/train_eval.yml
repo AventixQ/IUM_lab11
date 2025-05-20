@@ -1,0 +1,59 @@
+name: Train and Evaluate
+
+on:
+  workflow_dispatch:
+    inputs:
+      epochs:
+        description: 'Numb of epoch'
+        required: true
+        default: '10'
+      learning_rate:
+        description: 'Learning rate'
+        required: true
+        default: '0.001'
+
+jobs:
+  download:
+    name: Download
+    runs-on: ubuntu-latest
+    outputs:
+      data_dir: ${{ steps.set_output.outputs.data_dir }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Create data dir and download
+        run: |
+          mkdir -p data
+          wget https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv -O data/train.csv
+
+      - id: set_output
+        run: echo "data_dir=data" >> $GITHUB_OUTPUT
+
+  train:
+    name: Train Model
+    runs-on: ubuntu-latest
+    needs: download
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Train
+        run: |
+          echo "Training..."
+          echo "Epochs: ${{ github.event.inputs.epochs }}"
+          echo "Learning rate: ${{ github.event.inputs.learning_rate }}"
+          python train.py --data_dir=${{ needs.download.outputs.data_dir }} --epochs=${{ github.event.inputs.epochs }} --lr=${{ github.event.inputs.learning_rate }}
+
+  evaluate:
+    name: Evaluate Model
+    runs-on: ubuntu-latest
+    needs: train
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Evaluate
+        run: |
+          echo "Evalutaion running..."
+          python evaluate.py --data_dir=data
